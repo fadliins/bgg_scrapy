@@ -10,7 +10,7 @@ class BggscrapySpider(scrapy.Spider):
     def parse(self, response):
         #collection_ranks = 1
         for tabel in response.css('tr#row_'):
-            rank = tabel.css('td.collection_rank::text')[1].get()
+            rank = tabel.xpath("//td[@class='collection_rank']/text()")[1].get()
             try:
                 yield{
                     'rank' : w3lib.html.replace_escape_chars(rank),
@@ -37,9 +37,11 @@ class BggscrapySpider(scrapy.Spider):
                     'shop_link' : 'boardgamegeek.com' + tabel.css('td.collection_shop a::attr(href)').get(),
                     'link' : 'boardgamegeek.com' + tabel.css('a.primary::attr(href)').get()
                 }
-            
-        next_page = response.xpath("//p//a[contains(.,'Next')]").attrib['href']
-        if next_page is not None:
-            next = 'https://boardgamegeek.com' + next_page
-            yield scrapy.Request(url=next, callback=self.parse)
+        try:
+            next_page = response.xpath("//p//a[contains(.,'Next')]").attrib['href']
+            if next_page is not None:
+                next = 'https://boardgamegeek.com' + next_page
+                yield scrapy.Request(url=next, callback=self.parse)
+        except:
+            pass
             
