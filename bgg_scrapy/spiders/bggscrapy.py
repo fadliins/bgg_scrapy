@@ -1,6 +1,6 @@
-from gc import callbacks
 import scrapy
 import w3lib
+from bgg_scrapy.items import BggScrapyItem
 
 class BggscrapySpider(scrapy.Spider):
     name = 'bggscrapy'
@@ -9,36 +9,37 @@ class BggscrapySpider(scrapy.Spider):
 
     def parse(self, response):
         #collection_ranks = 1
-        for tabel in response.css('tr#row_'):
-            rank = tabel.xpath("//td[@class='collection_rank']/text()")[1].get()
+        item = BggScrapyItem()
+        for tabel in response.xpath("//tr[contains(@id, 'row_')]"):
+            rank = tabel.xpath(".//td[contains(@class, 'collection_rank')]").get()
+            rank = w3lib.html.remove_tags(rank)
             try:
-                yield{
-                    'rank' : w3lib.html.replace_escape_chars(rank),
-                    'name' : tabel.css('a.primary::text').get(),
-                    'description' : w3lib.html.replace_escape_chars(tabel.css('td.collection_objectname p.smallefont::text').get()),
-                    'rating' : {
-                        'geek_rating' : w3lib.html.replace_escape_chars(tabel.css('td.collection_bggrating::text')[0].get()),
-                        'avg_rating' : w3lib.html.replace_escape_chars(tabel.css('td.collection_bggrating::text')[1].get()),
-                        'num_voters' : w3lib.html.replace_escape_chars(tabel.css('td.collection_bggrating::text')[2].get())
-                    },
-                    'shop_link' : 'boardgamegeek.com' + tabel.css('td.collection_shop a::attr(href)').get(),
-                    'link' : 'boardgamegeek.com' + tabel.css('a.primary::attr(href)').get()
+                item['rank'] = w3lib.html.replace_escape_chars(rank)
+                item['name'] = tabel.xpath(".//a[contains(@class, 'primary')]/text()").get()
+                item['description'] = w3lib.html.replace_escape_chars(tabel.xpath(".//td[contains(@class, 'collection_objectname')]//p[contains(@class, 'smallefont')]/text()").get())
+                item['rating'] = {
+                    'geek_rating' : w3lib.html.replace_escape_chars(tabel.xpath(".//td[contains(@class, 'collection_bggrating')]/text()")[0].get()),
+                    'avg_rating' : w3lib.html.replace_escape_chars(tabel.xpath(".//td[contains(@class, 'collection_bggrating')]/text()")[1].get()),
+                    'num_voters' : w3lib.html.replace_escape_chars(tabel.xpath(".//td[contains(@class, 'collection_bggrating')]/text()")[2].get())
                 }
+                item['shop_link'] = 'boardgamegeek.com' + tabel.xpath(".//td[contains(@class, 'collection_shop')]//a/@href").get()
+                item['link'] = 'boardgamegeek.com' + tabel.xpath(".//a[contains(@class, 'primary')]/@href").get()
+                yield item
             except:
-                yield{
-                    'rank' : w3lib.html.replace_escape_chars(rank),
-                    'name' : tabel.css('a.primary::text').get(),
-                    'description' : "",
-                    'rating' : {
-                        'geek_rating' : w3lib.html.replace_escape_chars(tabel.css('td.collection_bggrating::text')[0].get()),
-                        'avg_rating' : w3lib.html.replace_escape_chars(tabel.css('td.collection_bggrating::text')[1].get()),
-                        'num_voters' : w3lib.html.replace_escape_chars(tabel.css('td.collection_bggrating::text')[2].get())
-                    },
-                    'shop_link' : 'boardgamegeek.com' + tabel.css('td.collection_shop a::attr(href)').get(),
-                    'link' : 'boardgamegeek.com' + tabel.css('a.primary::attr(href)').get()
+                item['rank'] = w3lib.html.replace_escape_chars(rank)
+                item['name'] = tabel.xpath(".//a[contains(@class, 'primary')]/text()").get()
+                item['description'] = ""
+                item['rating'] = {
+                    'geek_rating' : w3lib.html.replace_escape_chars(tabel.xpath(".//td[contains(@class, 'collection_bggrating')]/text()")[0].get()),
+                    'avg_rating' : w3lib.html.replace_escape_chars(tabel.xpath(".//td[contains(@class, 'collection_bggrating')]/text()")[1].get()),
+                    'num_voters' : w3lib.html.replace_escape_chars(tabel.xpath(".//td[contains(@class, 'collection_bggrating')]/text()")[2].get())
                 }
+                item['shop_link'] = 'boardgamegeek.com' + tabel.xpath(".//td[contains(@class, 'collection_shop')]//a/@href").get()
+                item['link'] = 'boardgamegeek.com' + tabel.xpath(".//a[contains(@class, 'primary')]/@href").get()
+                yield item
+        
         try:
-            next_page = response.xpath("//p//a[contains(.,'Next')]").attrib['href']
+            next_page = response.xpath("//p//a[contains(.,'Next')]/@href").get()
             if next_page is not None:
                 next = 'https://boardgamegeek.com' + next_page
                 yield scrapy.Request(url=next, callback=self.parse)
